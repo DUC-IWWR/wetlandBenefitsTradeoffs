@@ -1,6 +1,6 @@
 ## ---------------------------
 ##
-## Script name: 01.2_CAAFbirdRichness_manualListeningPrep.R 
+## Script name: 01.2_wetlandBenefitsTradeoffs_manualListeningPrep.R 
 ##
 ## Purpose of script: prepare recordings for manual listening
 ## Objective: input clips, then write sections of wav files that are much shorter and have easier to sort filenames (by species)

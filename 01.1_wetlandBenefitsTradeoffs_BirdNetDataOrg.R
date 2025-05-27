@@ -1,6 +1,6 @@
 ## ---------------------------
 ##
-## Script name: 01.1_CAAFsitesBirdNetDataOrg.R 
+## Script name: 01.1_wetlandBenefitsTradeoffs_BirdNetDataOrg.R 
 ##
 ## Purpose of script: Combine data from BirdNET detections into detection file for analyses
 ##

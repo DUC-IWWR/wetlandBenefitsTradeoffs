@@ -1,6 +1,6 @@
 ## ---------------------------
 ##
-## Script name: 02.1_CAAFanalyses.R 
+## Script name: 02.1_wetlandBenefitsTradeoffs_analyses.R 
 ##
 ## Purpose of script: Analyze relationships between productivity, GHG flux, & wetland bird richness
 ##
@@ -14,9 +14,7 @@
 ## ---------------------------
 
 # Load Libraries
-
 library(dplyr)
-library(sf)
 library(ggplot2)
 library(ggpubr)
 library(gridExtra)
@@ -26,13 +24,7 @@ library(ggtext)
 
 # 1. Load Data -----------------------------------------------------------------
 
-
-# caafSites_20250415 <- read.csv("Data/site_df_adjusted20250415.csv") #sites and biodiversity estimates confirmed after manual listening 
-
-# wetlandArea <- read.csv("Data/wetlandArea_20250424.csv")
-
 data <- read.csv("wetland_tradeoff_df_2025-05-02.csv")
-
 
 # Data summary
 summary(data)
@@ -124,10 +116,12 @@ for(j in 1:length(p_adjusted)){
   
 }
 
+# Print correlation matrix with corrected p-values and only specific pair-wise comparisons
+print(corPadjMatrix)
+
 # Write csv of corMatrix to use as Table 
 write.csv(corMatrix,
           "Outputs/tableS4_correlationMatrix.csv")
-
 
 # 3. Figure 1 -----------------------------------------------------
 
@@ -160,9 +154,9 @@ richnessNEP
 
 fig1 <- grid.arrange(richnessVegDens, richnessNEP, nrow = 1)
 
+# Save
 ggsave(fig1, file = "Outputs/figure1.png", 
        width = 9, height = 4)
-
 
 # 4. Figure 2 -----------------------------------------------------
 
@@ -421,8 +415,8 @@ nepN2O
 
 fig2 <- grid.arrange(vegDensGWP, nepGWP, vegDensCO2, nepCO2, vegDensCH4, nepCH4, vegDensN2O, nepN2O, nrow = 4)
 
+# Save
 ggsave(fig2, file = "Outputs/figure2.png", width = 9, height = 14)
-
 
 # 5. Figure 3 -----------------------------------------------------
 
@@ -536,6 +530,7 @@ richnessN2O
 
 fig3 <- grid.arrange(richnessGWP, richnessCO2, richnessCH4, richnessN2O, nrow = 4)
 
+# Save
 ggsave(fig3, file = "Outputs/figure3.png", 
        width = 4, height = 14)
 
@@ -588,9 +583,10 @@ wetlandAreaRichness_500m2 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRic
 wetlandAreaRichness_500m2
 
 fig4 <- grid.arrange(wetlandAreaVegDens, wetlandAreaGWP, wetlandAreaRichness_500m2)
+
+# Save
 ggsave(fig4, file = "Outputs/figure4.png", 
        width = 4, height = 10)
-
 
 # 7. Figure S3: richness vs wetland area - Confirmed Richness -----------------------------
 
@@ -638,89 +634,12 @@ richnessWetlandAreaPlot_5km2 <- ggplot(data = data %>%
   stat_poly_eq(use_label(c("R2")), size = rel(6)) 
 richnessWetlandAreaPlot_5km2
 
-richnessWetlandArea <- grid.arrange(richnessWetlandAreaPlot_250m2, richnessWetlandAreaPlot_500m2, 
+figS3_richnessWetlandArea <- grid.arrange(richnessWetlandAreaPlot_250m2, richnessWetlandAreaPlot_500m2, 
                                     richnessWetlandAreaPlot_1km2, richnessWetlandAreaPlot_5km2)
 
-ggsave(richnessWetlandArea, 
+# Save
+ggsave(figS3_richnessWetlandArea, 
        file = "Outputs/figureS3_richnessWetlandArea.png", 
        width = 10, height = 7)
-
-
-
-# Orphan and extra --------------------------------------------------------
-
-# 2. richness vs wetland area - original (not confirmed richness) --------------
-
-# richnessWetlandAreaPlot_250m <- ggplot(data = data, aes( x = wetlandArea_250m/1000000, y =  richness_adj)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm")+
-#   theme_classic(base_size = 16) + 
-#   labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") within 250m")))+ 
-#   stat_poly_eq(use_label(c("R2")), size = rel(6)) 
-# richnessWetlandAreaPlot_250m
-# 
-# richnessWetlandAreaPlot_500m <- ggplot(data = data, aes( x = wetlandArea_500m/1000000, y =  richness_adj)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm")+
-#   theme_classic(base_size = 16) + 
-#   labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") within 500m")))+ 
-#   stat_poly_eq(use_label(c("R2")), size = rel(6)) 
-# richnessWetlandAreaPlot_500m
-# 
-# richnessWetlandAreaPlot_1km <- ggplot(data = data, aes( x = wetlandArea_1km/1000000, y =  richness_adj)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm")+
-#   theme_classic(base_size = 16) + 
-#   labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") within 1km"))) + 
-#   stat_poly_eq(use_label(c("R2")), size = rel(6)) 
-# richnessWetlandAreaPlot_1km
-# 
-# richnessWetlandAreaPlot_5km <- ggplot(data = data, aes( x = wetlandArea_5km/1000000, y =  richness_adj)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm")+
-#   theme_classic(base_size = 16) + 
-#   labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") within 5km")))+ 
-#   stat_poly_eq(use_label(c("R2")), size = rel(6)) 
-# richnessWetlandAreaPlot_5km
-# 
-# grid.arrange(richnessWetlandAreaPlot_250m, richnessWetlandAreaPlot_500m, richnessWetlandAreaPlot_1km, richnessWetlandAreaPlot_5km)
-
-
-# 9. richness vs number of wetlands (not used - exploratory) --------------------------------------------
-
-richnessWetlandNumberPlot_250m <- ggplot(data = data, aes( x = num_wetlands_250m, y =  richness_adj)) + 
-  geom_point() + 
-  geom_smooth(method = "lm")+
-  theme_classic(base_size = 16) + 
-  labs(y = "Wetland bird richness", x = expression(paste("Number of basins within 250m")))+ 
-  stat_poly_eq(use_label(c("R2")), size = rel(6)) 
-richnessWetlandNumberPlot_250m
-
-richnessWetlandNumberPlot_500m <- ggplot(data = data, aes( x = num_wetlands_500m, y =  richness_adj)) + 
-  geom_point() + 
-  geom_smooth(method = "lm")+
-  theme_classic(base_size = 16) + 
-  labs(y = "Wetland bird richness", x = expression(paste("Number of basins within 500m")))+ 
-  stat_poly_eq(use_label(c("R2")), size = rel(6)) 
-richnessWetlandNumberPlot_500m
-
-richnessWetlandNumberPlot_1km <- ggplot(data = data, aes( x = num_wetlands_1km, y =  richness_adj)) + 
-  geom_point() + 
-  geom_smooth(method = "lm")+
-  theme_classic(base_size = 16) + 
-  labs(y = "Wetland bird richness", x = expression(paste("Number of basins within 1km"))) + 
-  stat_poly_eq(use_label(c("R2")), size = rel(6)) 
-richnessWetlandNumberPlot_1km
-
-richnessWetlandNumberPlot_5km <- ggplot(data = data, aes( x = num_wetlands_5km, y =  richness_adj)) + 
-  geom_point() + 
-  geom_smooth(method = "lm")+
-  theme_classic(base_size = 16) + 
-  labs(y = "Wetland bird richness", x = expression(paste("Number of basins within 5km")))+ 
-  stat_poly_eq(use_label(c("R2")), size = rel(6)) 
-richnessWetlandNumberPlot_5km
-
-grid.arrange(richnessWetlandNumberPlot_250m, richnessWetlandNumberPlot_500m, richnessWetlandNumberPlot_1km, richnessWetlandNumberPlot_5km)
-
 
 ## THE END :)

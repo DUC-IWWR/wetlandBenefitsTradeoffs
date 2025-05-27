@@ -1,6 +1,6 @@
 # ---------------------------
 ##
-## Script name: 01.3_CAAFdataPrep.R 
+## Script name: 01.3_wetlandBenefitsTradeoffs_dataPrep.R 
 ##
 ## Purpose of script: Summarize wetland bird richness and measure surrounding wetland area
 ##
