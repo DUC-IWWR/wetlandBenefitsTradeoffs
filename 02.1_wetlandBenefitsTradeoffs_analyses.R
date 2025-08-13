@@ -14,6 +14,7 @@
 ## ---------------------------
 
 # Load Libraries
+library(readxl)
 library(dplyr)
 library(ggplot2)
 library(ggpubr)
@@ -24,7 +25,8 @@ library(ggtext)
 
 # 1. Load Data -----------------------------------------------------------------
 
-data <- read.csv("wetland_tradeoff_df_2025-05-02.csv")
+#data <- read.csv("wetland_tradeoff_df_2025-05-02.csv")
+data <- read_excel("wetland_tradeoff_df_2025-07-28.xlsx", na = "NA")
 
 # Data summary
 summary(data)
@@ -34,7 +36,7 @@ summary(data)
 # Correlation Matrix. 8 total variables
 corMatrix <- data %>%
   dplyr::select(total_density, aerial_nep, 
-                pl_flux_co2, pl_flux_n2o, log_flux_ch4, pl_gwp_sum, 
+                pl_flux_co2, pl_flux_n2o, log_flux_ch4, pl_gwp_sum_g, 
                 wetlandBirdRichness, wetlandArea_500m) %>% # Removed from SW version: aerial_gpp, aerial_r, pl_gwp_co2, pl_gwp_n2o, log_gwp_ch4.
   cor(., 
       method = c("pearson"),
@@ -48,9 +50,9 @@ corMatrix[corMatrix == 1] <- NA
 corMatrix[lower.tri(corMatrix)] <- NA
 
 # Adjust because we didn't examine comparisons between CO2, N02, CH4, Total GWP, and R wasn't compared to anything but NEP and total density
-corMatrix["pl_flux_co2","pl_gwp_sum"] <- NA  # 
-corMatrix["pl_flux_n2o","pl_gwp_sum"] <- NA
-corMatrix["log_flux_ch4","pl_gwp_sum"] <- NA
+corMatrix["pl_flux_co2","pl_gwp_sum_g"] <- NA  # 
+corMatrix["pl_flux_n2o","pl_gwp_sum_g"] <- NA
+corMatrix["log_flux_ch4","pl_gwp_sum_g"] <- NA
 corMatrix["pl_flux_co2","pl_flux_n2o"] <- NA  # 
 corMatrix["pl_flux_co2","log_flux_ch4"] <- NA  # 
 corMatrix["pl_flux_n2o","log_flux_ch4"] <- NA  # 
@@ -77,7 +79,7 @@ for(i in 1:nrow(corPMatrix)){
       dplyr::select(any_of(c(row_i, col_k))) %>%
       na.omit()
     
-    corPMatrix[i,k] <- round(cor.test(x = data_ik[,row_i], y = data_ik[,col_k])$p.value, 5)
+    corPMatrix[i,k] <- round(cor.test(x = data_ik[[row_i]], y = data_ik[[col_k]])$p.value, 5)
     corPMatrix[lower.tri(corPMatrix)] <- NA
     
     
@@ -91,9 +93,9 @@ for(i in 1:nrow(corPMatrix)){
 corPMatrix[corPMatrix == 0] <- NA
 
 # Adjust for comparisons we don't test
-corPMatrix["pl_flux_co2","pl_gwp_sum"] <- NA  # 
-corPMatrix["pl_flux_n2o","pl_gwp_sum"] <- NA
-corPMatrix["log_flux_ch4","pl_gwp_sum"] <- NA
+corPMatrix["pl_flux_co2","pl_gwp_sum_g"] <- NA  # 
+corPMatrix["pl_flux_n2o","pl_gwp_sum_g"] <- NA
+corPMatrix["log_flux_ch4","pl_gwp_sum_g"] <- NA
 corPMatrix["pl_flux_co2","pl_flux_n2o"] <- NA  # 
 corPMatrix["pl_flux_co2","log_flux_ch4"] <- NA  # 
 corPMatrix["pl_flux_n2o","log_flux_ch4"] <- NA  # 
@@ -120,8 +122,9 @@ for(j in 1:length(p_adjusted)){
 print(corPadjMatrix)
 
 # Write csv of corMatrix to use as Table 
-write.csv(corMatrix,
-          "Outputs/tableS4_correlationMatrix.csv")
+write.csv(corMatrix, 
+          paste0("Outputs/tableS4_correlationMatrix_", Sys.Date(), ".csv")
+          )
 
 # 3. Figure 1 -----------------------------------------------------
 
@@ -155,7 +158,7 @@ richnessNEP
 fig1 <- grid.arrange(richnessVegDens, richnessNEP, nrow = 1)
 
 # Save
-ggsave(fig1, file = "Outputs/figure1.png", 
+ggsave(fig1, file = paste0("Outputs/figure1_", Sys.Date(), ".png"), 
        width = 9, height = 4)
 
 # 4. Figure 2 -----------------------------------------------------
@@ -179,7 +182,7 @@ ggsave(fig1, file = "Outputs/figure1.png",
 
 vegDensGWP <- ggplot(data = data %>% 
                        filter(!is.na(total_density)), 
-                     aes( x = total_density, y = pl_gwp_sum)) + 
+                     aes( x = total_density, y = pl_gwp_sum_g)) + 
   geom_point() + 
   scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5), limits = c(-0.75, 5)) +
   # geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
@@ -187,7 +190,7 @@ vegDensGWP <- ggplot(data = data %>%
   #                    labels = expression("0", "10"^4, "10"^5)) +
   # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
-  labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("pseudo-log","(mg CO"[2], " m"^-2, " d"^-1, ")"))),  
+  labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("pseudo-log","(g CO"[2], " m"^-2, " d"^-1, ")"))),  
        x = " ", #expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), 
        tag = "a") + 
   ggtitle("Emergent vegetation density") +
@@ -253,7 +256,8 @@ vegDensCH4 <- ggplot(data = data %>%
                      aes( x = total_density, y = log_flux_ch4)) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  scale_y_continuous(breaks = c(0, 0.5, 1.0, 1.5, 2.0), limits = c(-0.10, 2.1)) +
+  #scale_y_continuous(breaks = c(0, 0.5, 1.0, 1.5, 2.0), limits = c(-0.10, 2.1)) +
+  scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-0.5, 5)) +
   # scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
   #                    labels = expression("0", "10"^4, "10"^5)) +
   # coord_cartesian(ylim = c(0, 100000))+
@@ -312,7 +316,7 @@ vegDensN2O
 
 nepGWP <- ggplot(data = data %>% 
                    filter(!is.na(aerial_nep)), 
-                 aes( x = aerial_nep, y = pl_gwp_sum)) + 
+                 aes( x = aerial_nep, y = pl_gwp_sum_g)) + 
   geom_point() + 
   scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5), limits = c(-0.75, 5)) +
   # geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
@@ -372,7 +376,8 @@ nepCH4 <- ggplot(data = data%>% filter(!is.na(aerial_nep)),
                  aes( x = aerial_nep, y = log_flux_ch4)) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  scale_y_continuous(breaks = c(0, 0.5, 1.0, 1.5, 2.0), limits = c(-0.10, 2.1)) +
+  scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1.4, 5)) +
+  #scale_y_continuous(breaks = c(0, 0.5, 1.0, 1.5, 2.0), limits = c(-0.10, 2.1)) +
   # scale_y_continuous()+ 
   #                    labels = expression("0", "10"^4, "10"^5)) +
   # coord_cartesian(ylim = c(0, 100000))+
@@ -416,7 +421,7 @@ nepN2O
 fig2 <- grid.arrange(vegDensGWP, nepGWP, vegDensCO2, nepCO2, vegDensCH4, nepCH4, vegDensN2O, nepN2O, nrow = 4)
 
 # Save
-ggsave(fig2, file = "Outputs/figure2.png", width = 9, height = 14)
+ggsave(fig2, file = paste0("Outputs/figure2_", Sys.Date(), ".png"), width = 9, height = 14)
 
 # 5. Figure 3 -----------------------------------------------------
 
@@ -435,7 +440,7 @@ ggsave(fig2, file = "Outputs/figure2.png", width = 9, height = 14)
 #        x = "Wetland bird richness", tag = "a") 
 
 richnessGWP <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
-                     aes( x = wetlandBirdRichness, y = pl_gwp_sum)) + 
+                     aes( x = wetlandBirdRichness, y = pl_gwp_sum_g)) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
   # scale_y_continuous(breaks=c(0, 10000, 100000), 
@@ -444,7 +449,7 @@ richnessGWP <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)),
   theme_classic(base_size = 14) + 
   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
   scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5), limits = c(-0.75, 5)) +
-  labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("pseudo-log(mg CO"[2], " m"^-2, " d"^-1, ")"))),  
+  labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("pseudo-log(g CO"[2], " m"^-2, " d"^-1, ")"))),  
        x = "Wetland bird richness", tag = "a") 
 richnessGWP
 
@@ -495,7 +500,8 @@ richnessCH4 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)),
   # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
-  scale_y_continuous(breaks = c(-0.5, 0, 0.5, 1, 1.5, 2.0), limits = c(-0.6, 2)) +
+  scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1.4, 5)) +
+  #scale_y_continuous(breaks = c(-0.5, 0, 0.5, 1, 1.5, 2.0), limits = c(-0.6, 2)) +
   labs(y = expression(atop(CH[4]*" "[italic("aq")], "log(mmol m"^-2*" d"^-1*")")),  
        x = "Wetland bird richness", tag = "c")
 richnessCH4
@@ -528,11 +534,11 @@ richnessN2O <- ggplot(data = data%>% filter(!is.na(wetlandBirdRichness)),
 richnessN2O
 
 
-fig3 <- grid.arrange(richnessGWP, richnessCO2, richnessCH4, richnessN2O, nrow = 4)
+fig3 <- grid.arrange(richnessGWP, richnessCO2, richnessCH4, richnessN2O, nrow = 2)
 
 # Save
-ggsave(fig3, file = "Outputs/figure3.png", 
-       width = 4, height = 14)
+ggsave(fig3, file = paste0("Outputs/figure3_", Sys.Date(), ".png"), 
+       width = 10, height = 8)
 
 # 6. Figure 4 ------------------------------------------------------------------
 
@@ -548,13 +554,13 @@ wetlandAreaVegDens <- ggplot(data = data %>%
                      limits = c(0, 0.6)) +
   theme_classic(base_size = 14) + 
   ylab("Density of wetland emergent<br>vegetation (kg m<sup>-2</sup>)") +
-  xlab("Wetland area (km<sup>2</sup>) within 500m")+
+  xlab("")+ #"Wetland area (km<sup>2</sup>) within 500m"
   theme(axis.title.y = element_markdown(), 
         axis.title.x = element_markdown()) +
   labs(tag = "a") 
 wetlandAreaVegDens
 
-wetlandAreaGWP <- ggplot(data = data, aes( x = wetlandArea_500m/1000000, y = pl_gwp_sum )) + 
+wetlandAreaGWP <- ggplot(data = data, aes( x = wetlandArea_500m/1000000, y = pl_gwp_sum_g )) + 
   geom_point() + 
   # geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
   # scale_y_continuous(breaks=c(0, 10000, 100000), 
@@ -564,8 +570,8 @@ wetlandAreaGWP <- ggplot(data = data, aes( x = wetlandArea_500m/1000000, y = pl_
                      limits = c(0, 0.42)) +
   scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5), limits = c(-0.75, 5)) +
   theme_classic(base_size = 14) + 
-  labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("pseudo-log(mg CO"[2], " m"^-2, " d"^-1, ")"))),
-       x = expression(paste("Wetland area (km"^2,") within 500m")), tag = "b") 
+  labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("pseudo-log(g CO"[2], " m"^-2, " d"^-1, ")"))),
+       x = "", tag = "b") #x = expression(paste("Wetland area (km"^2,") within 500m"))
 wetlandAreaGWP
 
 wetlandAreaRichness_500m2 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
@@ -585,7 +591,7 @@ wetlandAreaRichness_500m2
 fig4 <- grid.arrange(wetlandAreaVegDens, wetlandAreaGWP, wetlandAreaRichness_500m2)
 
 # Save
-ggsave(fig4, file = "Outputs/figure4.png", 
+ggsave(fig4, file = paste0("Outputs/figure4_", Sys.Date(), ".png"), 
        width = 4, height = 10)
 
 # 7. Figure S3: richness vs wetland area - Confirmed Richness -----------------------------
@@ -640,6 +646,25 @@ figS3_richnessWetlandArea <- grid.arrange(richnessWetlandAreaPlot_250m2, richnes
 # Save
 ggsave(figS3_richnessWetlandArea, 
        file = "Outputs/figureS3_richnessWetlandArea.png", 
-       width = 10, height = 7)
+       width = 10, height = 7) 
+
+# 8. Table S1: Summary of wetland characteristics -------------------------------------------------------
+
+summaryVariables <- data %>% 
+  select(depth, full_wetland_area_m2, total_em_area_m2, aerial_nep, total_density, aerial_gpp, aerial_r, 
+         flux_co2, flux_ch4, flux_n2o, gwp_sum_g, wetlandBirdRichness, wetlandArea_500m)
+
+summary_table <- data.frame(
+  Variable = names(summaryVariables),
+  Mean = sapply(summaryVariables, function(x) mean(x, na.rm = TRUE)),
+  Median = sapply(summaryVariables, function(x) median(x, na.rm = TRUE)),
+  SD = sapply(summaryVariables, function(x) sd(x, na.rm = TRUE)),
+  Min = sapply(summaryVariables, function(x) min(x, na.rm = TRUE)),
+  Max = sapply(summaryVariables, function(x) max(x, na.rm = TRUE)),
+  N = sapply(summaryVariables, function(x) sum(!is.na(x)))
+)
+
+print(summary_table)
+
 
 ## THE END :)
