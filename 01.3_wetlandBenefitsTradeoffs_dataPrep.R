@@ -18,6 +18,7 @@
 # creates table S3, measures wetland area, and saves the final csv (113 sites with all response variables) that cleans previous versions
 
 # Load Libraries
+library(readxl)
 library(dplyr)
 library(sf)
 library(ggplot2)
@@ -49,7 +50,7 @@ speciesSitesTableS3 <- speciesSitesTable %>%
 
 # Save table S3
 write.csv(speciesSitesTableS3,
-          "Outputs/tableS3_speciesSites.csv")
+          paste0("Outputs/tableS3_speciesSites_", Sys.Date(), ".csv"))
 
 # How many sites?
 length(unique(speciesSitesTable$SITE_ID)) # There are 57 unique sites
@@ -79,17 +80,13 @@ siteWetlandBirdRichness <- wetlandBirdDetections %>%
   summarize(richnessConfirmed = length(unique(Common.name)))
 
 # Load SW's data and link
-caafSites_SW <- read.csv("Data/wetland_tradeoff_df_apr25.csv") # sites from SW
+caafData <- read_xlsx("Data/wetland_tradeoff_df_2025-07-28.xlsx", na = "NA") # sites from SW
 
-# Previous version that identifies the 65 sites in this study.
-caafSitesVector <- read.csv("Data/site_df_SW.csv") %>%
-  pull(site_id)
 
 # Left join to confirmed richness data
-caafSitesData <- caafSites_SW %>%
+caafSitesData <- caafData %>%
   left_join(siteWetlandBirdRichness,
-            by = c("site_id" = "SITE_ID")) %>%
-  filter(site_id %in% caafSitesVector)
+            by = c("site_id" = "SITE_ID")) 
 
 # Results % in different groups
 birdGroupSummary <- speciesSitesTableS3 %>%
@@ -99,14 +96,26 @@ birdGroupSummary <- speciesSitesTableS3 %>%
             species_perc = species_num/length(unique(wetlandBirdDetections$Common.name)) * 100)
 
 ##### Testing relationship between confirmed and naive richness ---------------
+# Load SW's data and link
+caafSites_SW_apr25 <- read.csv("Data/wetland_tradeoff_df_apr25.csv") # sites from SW
+
+# Previous version that identifies the 65 sites in this study.
+caafSitesVector <- read.csv("Data/site_df_SW.csv") %>%
+  pull(site_id)
+
+# Left join to confirmed richness data
+caafSitesData_apr25 <- caafSites_SW_apr25 %>%
+  left_join(siteWetlandBirdRichness,
+            by = c("site_id" = "SITE_ID")) %>%
+  filter(site_id %in% caafSitesVector)
 
 # Plot previous 2 versions of richness to new one
-plot(richnessConfirmed~wet_bird_richness, caafSitesData)
+plot(richnessConfirmed~wet_bird_richness, caafSitesData_apr25)
 abline(0,1)
 # plot(richnessConfirmed~richness_adj, caafSitesData)
 # Both strongly correlated
 
-summary(lm(richnessConfirmed~wet_bird_richness, caafSitesData))
+summary(lm(richnessConfirmed~wet_bird_richness, caafSitesData_apr25))
 # summary(lm(richnessConfirmed~richness_adj, caafSitesData))
 
 ##### 2. Measure Wetland Area ------------------------------------------------------------
@@ -187,9 +196,8 @@ caafWetlands <- caafWetlands_250m %>%
 
 caafSitesData <- caafSitesData %>%
   # Remove old area calculations and richness estimates
-  dplyr::select(-wetlandArea_250m, -wetlandArea_500m, -wetlandArea_1km, -wetlandArea_5km, -wet_bird_richness) %>%
+  dplyr::select(-wetlandArea_250m, -wetlandArea_500m, -wetlandArea_1km, -wetlandArea_5km) %>%
   # Rename wetland bird richness
-  rename(wetlandBirdRichness = richnessConfirmed) %>%
   left_join(.,
             caafWetlands, 
             by = "site_id")
