@@ -14,7 +14,6 @@
 ## ---------------------------
 
 # Load Libraries
-library(readxl)
 library(dplyr)
 library(ggplot2)
 library(ggpubr)
@@ -25,8 +24,7 @@ library(ggtext)
 
 # 1. Load Data -----------------------------------------------------------------
 
-#data <- read.csv("wetland_tradeoff_df_2025-05-02.csv")
-data <- read_excel("wetland_tradeoff_df_2025-07-28.xlsx", na = "NA")
+data <- read.csv("wetland_tradeoff_df_2025-08-15.csv")
 
 # Data summary
 summary(data)
