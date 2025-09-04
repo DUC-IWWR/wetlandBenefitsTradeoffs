@@ -746,7 +746,39 @@ ggsave(figS3_richnessWetlandArea,
        file = "Outputs/figureS3_richnessWetlandArea.png", 
        width = 10, height = 7) 
 
-# 8. Table S1: Summary of wetland characteristics -------------------------------------------------------
+# 8. Fig S4. density of wetland emergent vegetation vs NEP ------------
+df_plot_S4 <- data %>%
+  filter(!is.na(total_density), !is.na(aerial_nep)) 
+  
+
+# Run correlation test
+cor_test_S4 <- cor.test(  df_plot_S4$total_density, df_plot_S4$aerial_nep, method = "pearson")
+
+# Extract values
+r_val_S4 <- cor_test_S4$estimate
+n_val_S4 <- nrow(df_plot_S4)
+p_adj_S4 <- corPadjMatrix[  "total_density", "aerial_nep"]
+
+FigS4 <- ggplot(data = df_plot_S4, 
+                                    aes( x = total_density, y = aerial_nep)) + 
+  geom_point() + 
+  theme_classic(base_size = 14) + 
+  scale_y_continuous(breaks = c(-30, -20, -10, 0, 10, 20), limits = c(-35, 20)) + 
+  scale_x_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6), limits = c(0, 0.6)) +
+  labs(y = expression(paste("NEP"[italic("aq")], " (g O"[2],"m"^-2,"d"^-1,")")), 
+       x = expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")")))) + 
+  annotate("text", x = min(df_plot_S4$total_density), y = 18, 
+           label = paste0("italic(r) == ", round(r_val_S4, 2), 
+                          "*','~italic(n) == ", n_val_S4, 
+                          "*','~italic(p)[adj] == ", round(p_adj_S4, 3)), 
+           parse = TRUE, hjust = 0, size = 4)
+FigS4
+
+ggsave(FigS4, file = paste0("Outputs/figureS4_", Sys.Date(), ".png"), 
+       width = 5, height = 4)
+
+
+# 9. Table S1: Summary of wetland characteristics -------------------------------------------------------
 
 summaryVariables <- data %>% 
   select(depth_filled, full_wetland_area_m2, total_em_area_m2, total_density, aerial_gpp, aerial_r, aerial_nep,  
