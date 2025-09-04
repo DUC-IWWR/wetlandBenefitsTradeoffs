@@ -4,12 +4,12 @@
 ##
 ## Purpose of script: Analyze relationships between productivity, GHG flux, & wetland bird richness
 ##
-## Author: Ash Pidwerbesky, James Paterson
+## Author: Ash Melo (Pidwerbesky), James Paterson
 ##
 ## Date Created: 2024-09-16
 ## Date Edited: 2025-05-26
 ## 
-## Email: a_pidwerbesky@ducks.ca, j_paterson@ducks.ca
+## Email: a_melo@ducks.ca, j_paterson@ducks.ca
 ##
 ## ---------------------------
 
@@ -38,8 +38,8 @@ corMatrix <- data %>%
                 wetlandBirdRichness, wetlandArea_500m) %>% # Removed from SW version: aerial_gpp, aerial_r, pl_gwp_co2, pl_gwp_n2o, log_gwp_ch4.
   cor(., 
       method = c("pearson"),
-      use =  "pairwise.complete.obs") %>%
-  round(., digits = 2)
+      use =  "pairwise.complete.obs") #%>%
+  # round(., digits = 2)
 
 # Set diagonal of same variables to NA
 corMatrix[corMatrix == 1] <- NA
@@ -80,8 +80,6 @@ for(i in 1:nrow(corPMatrix)){
     corPMatrix[i,k] <- round(cor.test(x = data_ik[[row_i]], y = data_ik[[col_k]])$p.value, 5)
     corPMatrix[lower.tri(corPMatrix)] <- NA
     
-    
-    
   }
   
 }
@@ -91,17 +89,17 @@ for(i in 1:nrow(corPMatrix)){
 corPMatrix[corPMatrix == 0] <- NA
 
 # Adjust for comparisons we don't test
-corPMatrix["pl_flux_co2","pl_gwp_sum_g"] <- NA  # 
+corPMatrix["pl_flux_co2","pl_gwp_sum_g"] <- NA
 corPMatrix["pl_flux_n2o","pl_gwp_sum_g"] <- NA
 corPMatrix["log_flux_ch4","pl_gwp_sum_g"] <- NA
-corPMatrix["pl_flux_co2","pl_flux_n2o"] <- NA  # 
-corPMatrix["pl_flux_co2","log_flux_ch4"] <- NA  # 
-corPMatrix["pl_flux_n2o","log_flux_ch4"] <- NA  # 
+corPMatrix["pl_flux_co2","pl_flux_n2o"] <- NA 
+corPMatrix["pl_flux_co2","log_flux_ch4"] <- NA
+corPMatrix["pl_flux_n2o","log_flux_ch4"] <- NA
 
-# Perform Bonferroni correction on 30 tests
+# Perform Holm correction on 22 tests
 p_adjusted <- p.adjust(corPMatrix[!is.na(corPMatrix)], 
                        method = "holm", 
-                       n = sum(!is.na(corMatrix)))# 22 comparisons
+                       n = sum(!is.na(corMatrix)))
 
 # Make matrix to hold values
 corPadjMatrix <- corPMatrix
@@ -111,17 +109,19 @@ corPOriginal <- corPMatrix[!is.na(corPMatrix)]
 
 # Put adjusted p-values in same matrix
 for(j in 1:length(p_adjusted)){
+  
   corPOriginal_j <- corPOriginal[j]
   corPadjMatrix[corPadjMatrix == corPOriginal_j] <- p_adjusted[j]
-  
-}
+
+  }
 
 # Print correlation matrix with corrected p-values and only specific pair-wise comparisons
 print(corPadjMatrix)
 
 # Write csv of corMatrix to use as Table 
-write.csv(corMatrix, 
-          paste0("Outputs/tableS4_correlationMatrix_", Sys.Date(), ".csv")
+write.csv(corMatrix %>%
+          round(., digits = 2), 
+          paste0("Outputs/table_correlationMatrix_", Sys.Date(), ".csv")
           )
 
 # 3. Figure 1 -----------------------------------------------------
@@ -167,7 +167,7 @@ r_val_1b <- cor_test_1b$estimate
 n_val_1b <- nrow(df_plot_1b)
 p_adj_1b <- corPadjMatrix["aerial_nep", "wetlandBirdRichness"]
 
-richnessNEP <- ggplot(data = data%>% filter(!is.na(wetlandBirdRichness), !is.na(aerial_nep)), 
+richnessNEP <- ggplot(data = df_plot_1b, 
                       aes( x = aerial_nep, y = wetlandBirdRichness)) + 
   geom_point() + 
   #geom_smooth(method = "lm", se = F, col = "black")+ 
@@ -193,24 +193,6 @@ ggsave(fig1, file = paste0("Outputs/figure1_", Sys.Date(), ".png"),
 
 # 4. Figure 2 -----------------------------------------------------
 
-# James: keeping version from AP re-creating SW's figures, but adding version that uses actual data in correlation test (pseuo-log, and log transformed total and specific fluxes)
-
-# vegDensGWP <- ggplot(data = data %>% 
-#                        filter(!is.na(total_density)), 
-#                      aes( x = total_density, y = gwp_sum)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-#   scale_y_continuous(breaks=c(0, 10000, 100000), 
-#                      labels = expression("0", "10"^4, "10"^5)) +
-#   coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("(mg CO"[2], " m"^-2, " d"^-1, ")"))),  
-#        x = " ", #expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), 
-#        tag = "a") + 
-#   ggtitle("Emergent vegetation density") +
-#   theme(plot.title = element_text(hjust = 0.5))
-
-
 df_plot_2a <- data %>%
   filter(!is.na(pl_gwp_sum_g), !is.na(total_density))
 
@@ -222,16 +204,11 @@ r_val_2a <- cor_test_2a$estimate
 n_val_2a <- nrow(df_plot_2a)
 p_adj_2a <- corPadjMatrix["total_density", "pl_gwp_sum_g"]
 
-vegDensGWP <- ggplot(data = data %>% 
-                       filter(!is.na(total_density)), 
+vegDensGWP <- ggplot(data = df_plot_2a, 
                      aes( x = total_density, y = pl_gwp_sum_g)) + 
   geom_point() + 
   scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5), limits = c(-0.75, 5)) +
   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  # geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  # scale_y_continuous(breaks=c(0, 10000, 100000), 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("pseudo-log","(g CO"[2], " m"^-2, " d"^-1, ")"))),  
        x = " ", #expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), 
@@ -244,18 +221,6 @@ vegDensGWP <- ggplot(data = data %>%
                           "*','~italic(p)[adj] == ", round(p_adj_2a, 2)), 
            parse = TRUE, hjust = 0, size = 4)
 vegDensGWP
-
-# vegDensCO2 <- ggplot(data = data%>% filter(!is.na(total_density)), 
-#                      aes( x = total_density, y = flux_co2)) + 
-#   geom_point() + 
-#   #geom_smooth(method = "lm", se = F, col = "black")+ 
-#   # scale_y_continuous(breaks=c(0, 10000, 100000), 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = expression(atop(CO[2]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = " ", #expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), 
-#        tag = "b") 
 
 df_plot_2b <- data %>%
   filter(!is.na(pl_flux_co2), !is.na(total_density))
@@ -272,13 +237,9 @@ vegDensCO2 <- ggplot(data = data%>% filter(!is.na(total_density)),
                      aes( x = total_density, y = pl_flux_co2)) + 
   geom_point() + 
   scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1.4, 5)) +
-  #geom_smooth(method = "lm", se = F, col = "black")+ 
-  # scale_y_continuous(breaks=c(0, 10000, 100000), 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   labs(y = expression(atop(CO[2]*" "[italic("aq")], "pseudo-log(mmol m"^-2*" d"^-1*")")),  
-       x = " ", #expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), 
+       x = " ",
        tag = "b") +
   annotate("text", x = min(df_plot_2b$total_density), y = 5, 
            label = paste0("italic(r) == ", round(r_val_2b, 2), 
@@ -286,34 +247,6 @@ vegDensCO2 <- ggplot(data = data%>% filter(!is.na(total_density)),
                           "*','~italic(p)[adj] == ", round(p_adj_2b, 2)), 
            parse = TRUE, hjust = 0, size = 4)
 vegDensCO2
-
-# vegDensCH4 <- ggplot(data = data %>% 
-#                        filter(!is.na(total_density)), 
-#                      aes( x = total_density, y = flux_ch4)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-#   # scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = expression(atop(CH[4]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = " ", #expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), 
-#        tag = "c") + 
-#   scale_y_log10(breaks=c(0, 1, 10, 100))
-
-# vegDensCH4 <- ggplot(data = data %>% 
-#                        filter(!is.na(total_density)), 
-#                      aes( x = total_density, y = flux_ch4)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-#   # scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = expression(atop(CH[4]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = " ", #expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), 
-#        tag = "c") + 
-#   scale_y_log10(breaks=c(0, 1, 10, 100))
 
 df_plot_2c <- data %>%
   filter(!is.na(log_flux_ch4), !is.na(total_density))
@@ -345,23 +278,7 @@ vegDensCH4 <- ggplot(data = data %>%
                           "*','~italic(n) == ", n_val_2c, 
                           "*','~italic(p)[adj] == ", round(p_adj_2c, 2)), 
            parse = TRUE, hjust = 0, size = 4)
-
 vegDensCH4
-
-
-# vegDensN2O <- ggplot(data = data %>% 
-#                        filter(!is.na(total_density)), 
-#                      aes( x = total_density, y = flux_n2o)) + 
-#   geom_point() + 
-#   scale_y_continuous(breaks = c(0, 0.05, 0.10, 0.15),
-#                      limits = c(-0.01, 0.15)) +
-#   #geom_smooth(method = "lm", se = F, col = "black")+ 
-#   #scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = expression(atop(N[2]*"O "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), tag = "d") 
 
 df_plot_2d <- data %>%
   filter(!is.na(pl_flux_n2o), !is.na(total_density))
@@ -379,12 +296,6 @@ vegDensN2O <- ggplot(data = data %>%
                      aes( x = total_density, y = pl_flux_n2o)) + 
   geom_point() + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5), limits = c(-2.15, 5.5)) +
-  # scale_y_continuous(breaks = c(0, 0.05, 0.10, 0.15),
-  #                    limits = c(-0.01, 0.15)) +
-  #geom_smooth(method = "lm", se = F, col = "black")+ 
-  #scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   labs(y = expression(atop(N[2]*"O "[italic("aq")], "pseudo-log(mmol m"^-2*" d"^-1*")")),  
        x = expression(atop("Density of wetland emergent", paste("vegetation (kg m"^-2,")"))), tag = "d") +
@@ -395,26 +306,11 @@ vegDensN2O <- ggplot(data = data %>%
            parse = TRUE, hjust = 0, size = 4)
 vegDensN2O
 
-# nepGWP <- ggplot(data = data %>% 
-#                    filter(!is.na(aerial_nep)), 
-#                  aes( x = aerial_nep, y = gwp_sum)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-#   scale_y_continuous(breaks=c(0, 10000, 100000), 
-#                      labels = expression("0", "10"^4, "10"^5)) +
-#   coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = " ", #expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("(mg CO"[2], " m"^-2, " d"^-1, ")"))),  
-#        x = " ", #expression(atop(paste("NEP"[italic("aq")], " (g O"[2],"m"^-2,"d"^-1,")"), " ")), 
-#        tag = "e") + 
-#   ggtitle("Aquatic productivity") +
-#   theme(plot.title = element_text(hjust = 0.5))
-
 df_plot_2e <- data %>%
   filter(!is.na(pl_gwp_sum_g), !is.na(aerial_nep))
 
 # Run correlation test
-cor_test_2e <- cor.test(  df_plot_2e$aerial_nep, df_plot_2e$pl_gwp_sum_g, method = "pearson")
+cor_test_2e <- cor.test(df_plot_2e$aerial_nep, df_plot_2e$pl_gwp_sum_g, method = "pearson")
 
 # Extract values
 r_val_2e <- cor_test_2e$estimate
@@ -426,10 +322,6 @@ nepGWP <- ggplot(data = data %>%
                  aes( x = aerial_nep, y = pl_gwp_sum_g)) + 
   geom_point() + 
   scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5), limits = c(-0.75, 5)) +
-  # geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  # scale_y_continuous(breaks=c(0, 10000, 100000), 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   labs(y = " ", #expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("(mg CO"[2], " m"^-2, " d"^-1, ")"))),  
        x = " ", #expression(atop(paste("NEP"[italic("aq")], " (g O"[2],"m"^-2,"d"^-1,")"), " ")), 
@@ -443,39 +335,21 @@ nepGWP <- ggplot(data = data %>%
            parse = TRUE, hjust = 0, size = 4)
 nepGWP
 
-# nepCO2 <- ggplot(data = data %>% 
-#                    filter(!is.na(aerial_nep)), 
-#                  aes( x = aerial_nep, y = flux_co2)) + 
-#   geom_point() + 
-#   #geom_smooth(method = "lm", se = F, col = "black")+ 
-#   # scale_y_continuous(breaks=c(0, 10000, 100000), 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = " ", # expression(atop(CO[2]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = " ", #expression(atop(paste("NEP"[italic("aq")], " (g O"[2],"m"^-2,"d"^-1,")"), " "))
-#        tag = "f") 
-
 df_plot_2f <- data %>%
   filter(!is.na(pl_flux_co2), !is.na(aerial_nep))
 
 # Run correlation test
-cor_test_2f <- cor.test(  df_plot_2f$aerial_nep, df_plot_2f$pl_flux_co2, method = "pearson")
+cor_test_2f <- cor.test(df_plot_2f$aerial_nep, df_plot_2f$pl_flux_co2, method = "pearson")
 
 # Extract values
 r_val_2f <- cor_test_2f$estimate
 n_val_2f <- nrow(df_plot_2f)
 p_adj_2f <- corPadjMatrix["aerial_nep", "pl_flux_co2"]
 
-nepCO2 <- ggplot(data = data %>% 
-                   filter(!is.na(aerial_nep)), 
+nepCO2 <- ggplot(data = df_plot_2f, 
                  aes( x = aerial_nep, y = pl_flux_co2)) + 
   geom_point() + 
   scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1.4, 5)) +
-  #geom_smooth(method = "lm", se = F, col = "black")+ 
-  # scale_y_continuous(breaks=c(0, 10000, 100000), 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   labs(y = " ", # expression(atop(CO[2]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
        x = " ", #expression(atop(paste("NEP"[italic("aq")], " (g O"[2],"m"^-2,"d"^-1,")"), " "))
@@ -487,39 +361,22 @@ nepCO2 <- ggplot(data = data %>%
            parse = TRUE, hjust = 0, size = 4)
 nepCO2
 
-# nepCH4 <- ggplot(data = data%>% filter(!is.na(aerial_nep)), 
-#                  aes( x = aerial_nep, y = flux_ch4)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-#   # scale_y_continuous()+ 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = " ",  #expression(atop(CH[4]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")"))
-#        x = " ", #expression(atop(paste("NEP"[italic("aq")], " (g O"[2],"m"^-2,"d"^-1,")"), " ")), 
-#        tag = "g") + 
-#   scale_y_log10(breaks=c(0, 1, 10, 100))
-
 df_plot_2g <- data %>%
   filter(!is.na(log_flux_ch4), !is.na(aerial_nep))
 
 # Run correlation test
-cor_test_2g <- cor.test(  df_plot_2g$aerial_nep, df_plot_2g$log_flux_ch4, method = "pearson")
+cor_test_2g <- cor.test(df_plot_2g$aerial_nep, df_plot_2g$log_flux_ch4, method = "pearson")
 
 # Extract values
 r_val_2g <- cor_test_2g$estimate
 n_val_2g <- nrow(df_plot_2g)
 p_adj_2g <- corPadjMatrix["aerial_nep", "log_flux_ch4"]
 
-nepCH4 <- ggplot(data = data%>% filter(!is.na(aerial_nep)), 
+nepCH4 <- ggplot(data = df_plot_2g, 
                  aes( x = aerial_nep, y = log_flux_ch4)) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
   scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1.4, 5)) +
-  #scale_y_continuous(breaks = c(0, 0.5, 1.0, 1.5, 2.0), limits = c(-0.10, 2.1)) +
-  # scale_y_continuous()+ 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   labs(y = " ",  #expression(atop(CH[4]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")"))
        x = " ", #expression(atop(paste("NEP"[italic("aq")], " (g O"[2],"m"^-2,"d"^-1,")"), " ")), 
@@ -531,42 +388,21 @@ nepCH4 <- ggplot(data = data%>% filter(!is.na(aerial_nep)),
            parse = TRUE, hjust = 0, size = 4)
 nepCH4
 
-# nepN2O <- ggplot(data = data %>% 
-#                    filter(!is.na(aerial_nep)), 
-#                  aes( x = aerial_nep, y = flux_n2o)) + 
-#   geom_point() +
-#   scale_y_continuous(breaks = c(0, 0.05, 0.10, 0.15),
-#                      limits = c(-0.01, 0.15)) +
-#   #geom_smooth(method = "lm", se = F, col = "black")+ 
-#   #scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = " ", #expression(atop(N[2]*"O "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = expression(atop(paste("NEP"[italic("aq")], " (g O"[2]," m"^-2,"d"^-1,")"), " ")), tag = "h") 
-
 df_plot_2h <- data %>%
   filter(!is.na(pl_flux_n2o), !is.na(aerial_nep))
 
 # Run correlation test
-cor_test_2h <- cor.test(  df_plot_2h$aerial_nep, df_plot_2h$pl_flux_n2o, method = "pearson")
+cor_test_2h <- cor.test(df_plot_2h$aerial_nep, df_plot_2h$pl_flux_n2o, method = "pearson")
 
 # Extract values
 r_val_2h <- cor_test_2h$estimate
 n_val_2h <- nrow(df_plot_2h)
 p_adj_2h <- corPadjMatrix["aerial_nep", "pl_flux_n2o"]
 
-nepN2O <- ggplot(data = data %>% 
-                   filter(!is.na(aerial_nep)), 
+nepN2O <- ggplot(data = df_plot_2h, 
                  aes( x = aerial_nep, y = pl_flux_n2o)) + 
   geom_point() +
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5), limits = c(-2.15, 5.5)) +
-  # scale_y_continuous(breaks = c(0, 0.05, 0.10, 0.15),
-  #                    limits = c(-0.01, 0.15)) +
-  #geom_smooth(method = "lm", se = F, col = "black")+ 
-  #scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   labs(y = " ", #expression(atop(N[2]*"O "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
        x = expression(atop(paste("NEP"[italic("aq")], " (g O"[2]," m"^-2,"d"^-1,")"), " ")), tag = "h") + 
@@ -584,39 +420,21 @@ ggsave(fig2, file = paste0("Outputs/figure2_", Sys.Date(), ".png"), width = 9, h
 
 # 5. Figure 3 -----------------------------------------------------
 
-# See comments from above, adjusting figures to use scale in Pearson's correlation analyses
-
-# richnessGWP <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
-#                       aes( x = wetlandBirdRichness, y = gwp_sum)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-#   scale_y_continuous(breaks=c(0, 10000, 100000), 
-#                      labels = expression("0", "10"^4, "10"^5)) +
-#   coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
-#   labs(y = expression(atop("Total Instantaneous GHG Flux "[italic("aq")], paste("(mg CO"[2], " m"^-2, " d"^-1, ")"))),  
-#        x = "Wetland bird richness", tag = "a") 
-
 df_plot_3a <- data %>%
   filter(!is.na(pl_gwp_sum_g), !is.na(wetlandBirdRichness))
 
 # Run correlation test
-cor_test_3a <- cor.test(  df_plot_3a$wetlandBirdRichness, df_plot_3a$pl_gwp_sum_g, method = "pearson")
+cor_test_3a <- cor.test(df_plot_3a$wetlandBirdRichness, df_plot_3a$pl_gwp_sum_g, method = "pearson")
 
 # Extract values
 r_val_3a <- cor_test_3a$estimate
 n_val_3a <- nrow(df_plot_3a)
 p_adj_3a <- corPadjMatrix[ "pl_gwp_sum_g", "wetlandBirdRichness"]
 
-
-richnessGWP <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
-                     aes( x = wetlandBirdRichness, y = pl_gwp_sum_g)) + 
+richnessGWP <- ggplot(data = df_plot_3a, 
+                     aes(x = wetlandBirdRichness, y = pl_gwp_sum_g)) + 
   geom_point() + 
-  geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  # scale_y_continuous(breaks=c(0, 10000, 100000), 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
+  geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x') + 
   theme_classic(base_size = 14) + 
   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
   scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5), limits = c(-0.75, 5)) +
@@ -629,37 +447,21 @@ richnessGWP <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)),
            parse = TRUE, hjust = 0, size = 4)
 richnessGWP
 
-
-# richnessCO2 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
-#                       aes( x = wetlandBirdRichness, y = flux_co2)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black")+ 
-#   # scale_y_continuous(breaks=c(0, 10000, 100000), 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
-#   labs(y = expression(atop(CO[2]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = "Wetland bird richness", tag = "b") 
-
 df_plot_3b <- data %>%
   filter(!is.na(pl_flux_co2), !is.na(wetlandBirdRichness))
 
 # Run correlation test
-cor_test_3b <- cor.test(  df_plot_3b$wetlandBirdRichness, df_plot_3b$pl_flux_co2, method = "pearson")
+cor_test_3b <- cor.test(df_plot_3b$wetlandBirdRichness, df_plot_3b$pl_flux_co2, method = "pearson")
 
 # Extract values
 r_val_3b <- cor_test_3b$estimate
 n_val_3b <- nrow(df_plot_3b)
 p_adj_3b <- corPadjMatrix["pl_flux_co2", "wetlandBirdRichness"]
 
-richnessCO2 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
+richnessCO2 <- ggplot(data = df_plot_3b, 
                       aes( x = wetlandBirdRichness, y = pl_flux_co2)) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F, col = "black")+ 
-  # scale_y_continuous(breaks=c(0, 10000, 100000), 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
   scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1.4, 5)) +
@@ -672,41 +474,23 @@ richnessCO2 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)),
            parse = TRUE, hjust = 0, size = 4)
 richnessCO2
 
-# richnessCH4 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
-#                       aes( x = wetlandBirdRichness, y = flux_ch4)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-#   scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
-#   labs(y = expression(atop(CH[4]*" "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = "Wetland bird richness", tag = "c") + scale_y_log10()
-
 df_plot_3c <- data %>%
   filter(!is.na(log_flux_ch4), !is.na(wetlandBirdRichness))
 
 # Run correlation test
-cor_test_3c <- cor.test(  df_plot_3c$wetlandBirdRichness, df_plot_3c$log_flux_ch4, method = "pearson")
+cor_test_3c <- cor.test(df_plot_3c$wetlandBirdRichness, df_plot_3c$log_flux_ch4, method = "pearson")
 
 # Extract values
 r_val_3c <- cor_test_3c$estimate
 n_val_3c <- nrow(df_plot_3c)
 p_adj_3c <- corPadjMatrix["log_flux_ch4", "wetlandBirdRichness"]
 
-
-richnessCH4 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
+richnessCH4 <- ggplot(data = df_plot_3c, 
                       aes( x = wetlandBirdRichness, y = log_flux_ch4)) + 
   geom_point() + 
-  #geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  # scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
   scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1.4, 5)) +
-  #scale_y_continuous(breaks = c(-0.5, 0, 0.5, 1, 1.5, 2.0), limits = c(-0.6, 2)) +
   labs(y = expression(atop(CH[4]*" "[italic("aq")], "log(mmol m"^-2*" d"^-1*")")),  
        x = "Wetland bird richness", tag = "c") + 
   annotate("text", x = min(df_plot_3c$wetlandBirdRichness), y = 5, 
@@ -716,39 +500,22 @@ richnessCH4 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)),
            parse = TRUE, hjust = 0, size = 4)
 richnessCH4
 
-
-# richnessN2O <- ggplot(data = data%>% filter(!is.na(wetlandBirdRichness)), 
-#                       aes( x = wetlandBirdRichness, y = flux_n2o)) + 
-#   geom_point() + 
-#   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-#   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
-#   #scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-#   #                    labels = expression("0", "10"^4, "10"^5)) +
-#   # coord_cartesian(ylim = c(0, 100000))+
-#   theme_classic(base_size = 14) + 
-#   labs(y = expression(atop(N[2]*"O "[italic("aq")], "(mmol m"^-2*" d"^-1*")")),  
-#        x = "Wetland bird richness", tag = "d") 
-
 df_plot_3d <- data %>%
   filter(!is.na(pl_flux_n2o), !is.na(wetlandBirdRichness))
 
 # Run correlation test
-cor_test_3d <- cor.test(  df_plot_3d$wetlandBirdRichness, df_plot_3d$pl_flux_n2o, method = "pearson")
+cor_test_3d <- cor.test(df_plot_3d$wetlandBirdRichness, df_plot_3d$pl_flux_n2o, method = "pearson")
 
 # Extract values
 r_val_3d <- cor_test_3d$estimate
 n_val_3d <- nrow(df_plot_3d)
 p_adj_3d <- corPadjMatrix["pl_flux_n2o", "wetlandBirdRichness"]
 
-richnessN2O <- ggplot(data = data%>% filter(!is.na(wetlandBirdRichness)), 
-                      aes( x = wetlandBirdRichness, y = pl_flux_n2o)) + 
+richnessN2O <- ggplot(data = df_plot_3d, 
+                      aes(x = wetlandBirdRichness, y = pl_flux_n2o)) + 
   geom_point() + 
-  # geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5), limits = c(-2.15, 5.5)) +
-  #scale_y_continuous(breaks=c(0, 1, 10, 100))+ 
-  #                    labels = expression("0", "10"^4, "10"^5)) +
-  # coord_cartesian(ylim = c(0, 100000))+
   theme_classic(base_size = 14) + 
   labs(y = expression(atop(N[2]*"O "[italic("aq")], "pseudo-log(mmol m"^-2*" d"^-1*")")),  
        x = "Wetland bird richness", tag = "d") + 
@@ -779,20 +546,16 @@ r_val_4a <- cor_test_4a$estimate
 n_val_4a <- nrow(df_plot_4a)
 p_adj_4a <- corPadjMatrix["total_density", "wetlandArea_500m"]
 
-
-wetlandAreaVegDens <- ggplot(data = data %>% 
-                               filter(!is.na(total_density)), 
-                             aes( x = wetlandArea_500m/1000000, y = total_density )) + 
+wetlandAreaVegDens <- ggplot(data = df_plot_4a, 
+                             aes(x = wetlandArea_500m/1000000, y = total_density )) + 
   geom_point() + 
-  # geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  scale_x_continuous(#labels = c("0.0", "0.1", "0.2"), 
-    breaks = c(0.0, 0.05, 0.10, 0.15, 0.20),
-    limits = c(0, 0.2)) +
+  scale_x_continuous(breaks = c(0.0, 0.05, 0.10, 0.15, 0.20),
+                     limits = c(0, 0.2)) +
   scale_y_continuous(breaks = c(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6),
                      limits = c(0, 0.6)) +
   theme_classic(base_size = 14) + 
   ylab("Density of wetland emergent<br>vegetation (kg m<sup>-2</sup>)") +
-  xlab("")+ #"Wetland area (km<sup>2</sup>) within 500m"
+  xlab("") +
   theme(axis.title.y = element_markdown(), 
         axis.title.x = element_markdown()) +
   labs(tag = "a") + 
@@ -807,19 +570,16 @@ df_plot_4b <- data %>%
   filter(!is.na(pl_gwp_sum_g), !is.na(wetlandArea_500m))
 
 # Run correlation test
-cor_test_4b <- cor.test(  df_plot_4b$wetlandArea_500m, df_plot_4b$pl_gwp_sum_g, method = "pearson")
+cor_test_4b <- cor.test(df_plot_4b$wetlandArea_500m, df_plot_4b$pl_gwp_sum_g, method = "pearson")
 
 # Extract values
 r_val_4b <- cor_test_4b$estimate
 n_val_4b <- nrow(df_plot_4b)
 p_adj_4b <- corPadjMatrix["pl_gwp_sum_g", "wetlandArea_500m"]
 
-wetlandAreaGWP <- ggplot(data = data, aes( x = wetlandArea_500m/1000000, y = pl_gwp_sum_g )) + 
+wetlandAreaGWP <- ggplot(data = df_plot_4b, 
+                         aes(x = wetlandArea_500m/1000000, y = pl_gwp_sum_g )) + 
   geom_point() + 
-  # geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
-  # scale_y_continuous(breaks=c(0, 10000, 100000), 
-  #                    labels = expression(0, 10^4, 10^5),
-  #                    expand = expansion(mult = c(0.05, 0.05))) +
   scale_x_continuous(breaks = c(0.0, 0.10, 0.20, 0.30, 0.40),
                      limits = c(0, 0.42)) +
   scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5), limits = c(-0.75, 5)) +
@@ -844,7 +604,7 @@ r_val_4c <- cor_test_4c$estimate
 n_val_4c <- nrow(df_plot_4c)
 p_adj_4c <- corPadjMatrix[ "wetlandBirdRichness", "wetlandArea_500m"]
 
-wetlandAreaRichness_500m2 <- ggplot(data = data %>% filter(!is.na(wetlandBirdRichness)), 
+wetlandAreaRichness_500m2 <- ggplot(data = df_plot_4c, 
                                     aes( x = wetlandArea_500m/1000000, y = wetlandBirdRichness)) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+
@@ -871,48 +631,111 @@ ggsave(fig4, file = paste0("Outputs/figure4_", Sys.Date(), ".png"),
 
 # 7. Figure S3: richness vs wetland area - Confirmed Richness -----------------------------
 
-richnessWetlandAreaPlot_250m2 <- ggplot(data = data %>%
-                                          filter(!is.na(wetlandBirdRichness)), 
-                                        aes(x = wetlandArea_250m/1000000, y =  wetlandBirdRichness)) + 
+df_plot_s3 <- data %>%
+  filter(!is.na(wetlandBirdRichness)) %>%
+  mutate(wetlandArea_250m = wetlandArea_250m/1000000,
+         wetlandArea_500m = wetlandArea_500m/1000000,
+         wetlandArea_1km = wetlandArea_1km/1000000,
+         wetlandArea_5k0m = wetlandArea_5km/1000000)
+
+wetlandArea_250m_lm <- lm(wetlandBirdRichness~wetlandArea_250m,
+                          data = df_plot_s3)
+
+r2_val_s3a <- summary(wetlandArea_250m_lm)$r.squared
+n_val_s3a <- nrow(df_plot_s3)
+p_val_s3a <- pf(summary(wetlandArea_250m_lm)$fstatistic[1],
+                summary(wetlandArea_250m_lm)$fstatistic[2],
+                summary(wetlandArea_250m_lm)$fstatistic[3],
+                lower.tail = FALSE)
+
+richnessWetlandAreaPlot_250m2 <- ggplot(data = df_plot_s3, 
+                                        aes(x = wetlandArea_250m, y =  wetlandBirdRichness)) + 
   geom_point() + 
   geom_smooth(method = "lm", col = "black", se = F, formula = 'y~x')+
   theme_classic(base_size = 16) + 
   scale_y_continuous(breaks = c(0, 5, 10, 15, 20, 25, 30), limits = c(0, 30)) +
-  labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") ", bold("within 250m"))), tag = "a")+ 
-  stat_poly_eq(use_label(c("R2", "P", "n")), size = rel(4))  
+  labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") ", "within 250m")), tag = "a") + 
+  annotate("text", x = min(df_plot_s3$wetlandArea_250m), y = 30, 
+           label = paste0("italic(R^2) == ", round(r2_val_s3a, 2), 
+                          "*','~italic(n) == ", n_val_s3a, 
+                          "*','~italic(p) == ", round(p_val_s3a, 2)), 
+           parse = TRUE, hjust = 0, size = 4)
 richnessWetlandAreaPlot_250m2
 
-richnessWetlandAreaPlot_500m2 <- ggplot(data = data %>%
-                                          filter(!is.na(wetlandBirdRichness)), 
-                                        aes(x = wetlandArea_500m/1000000, y =  wetlandBirdRichness)) + 
+wetlandArea_500m_lm <- lm(wetlandBirdRichness~wetlandArea_500m,
+                          data = df_plot_s3)
+
+r2_val_s3b <- summary(wetlandArea_500m_lm)$r.squared
+n_val_s3b <- nrow(df_plot_s3)
+p_val_s3b <- pf(summary(wetlandArea_500m_lm)$fstatistic[1],
+                summary(wetlandArea_500m_lm)$fstatistic[2],
+                summary(wetlandArea_500m_lm)$fstatistic[3],
+                lower.tail = FALSE)
+# p_val_s3b < 0.001
+p_val_s3b <- 0.001
+
+richnessWetlandAreaPlot_500m2 <- ggplot(data = df_plot_s3, 
+                                        aes(x = wetlandArea_500m, y =  wetlandBirdRichness)) + 
   geom_point() + 
   geom_smooth(method = "lm", col = "black", se = F,  formula = 'y~x')+
   theme_classic(base_size = 16) + 
   scale_y_continuous(breaks = c(0, 5, 10, 15, 20, 25, 30), limits = c(0, 30)) +
-  labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") ", bold("within 500m"))), tag = "b")+ 
-  stat_poly_eq(use_label(c("R2", "P", "n")), size = rel(4)) 
+  labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") ", "within 500m")), tag = "b")+ 
+  annotate("text", x = min(df_plot_s3$wetlandArea_250m), y = 30, 
+           label = paste0("italic(R^2) == ", round(r2_val_s3b, 2), 
+                          "*','~italic(n) == ", n_val_s3b, 
+                          "*','~italic(p) < ", round(p_val_s3b, 3)), 
+           parse = TRUE, hjust = 0, size = 4)
 richnessWetlandAreaPlot_500m2
 
-richnessWetlandAreaPlot_1km2 <- ggplot(data = data%>%
-                                         filter(!is.na(wetlandBirdRichness)), 
-                                       aes( x = wetlandArea_1km/1000000, y =  wetlandBirdRichness)) + 
+wetlandArea_1km_lm <- lm(wetlandBirdRichness~wetlandArea_1km,
+                          data = df_plot_s3)
+
+r2_val_s3c <- summary(wetlandArea_1km_lm)$r.squared
+n_val_s3c <- nrow(df_plot_s3)
+p_val_s3c <- pf(summary(wetlandArea_1km_lm)$fstatistic[1],
+                summary(wetlandArea_1km_lm)$fstatistic[2],
+                summary(wetlandArea_1km_lm)$fstatistic[3],
+                lower.tail = FALSE)
+
+richnessWetlandAreaPlot_1km2 <- ggplot(data = df_plot_s3, 
+                                       aes(x = wetlandArea_1km, y =  wetlandBirdRichness)) + 
   geom_point() + 
   geom_smooth(method = "lm", col = "black", se = F, formula = 'y~x')+
   theme_classic(base_size = 16) + 
   scale_y_continuous(breaks = c(0, 5, 10, 15, 20, 25, 30), limits = c(0, 30)) +
-  labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") ", bold("within 1km"))), tag = "c") + 
-  stat_poly_eq(use_label(c("R2", "P", "n")), size = rel(4)) 
+  labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") ", "within 1km")), tag = "c") + 
+  annotate("text", x = min(df_plot_s3$wetlandArea_1km), y = 30, 
+           label = paste0("italic(R^2) == ", round(r2_val_s3c, 2), 
+                          "*','~italic(n) == ", n_val_s3c, 
+                          "*','~italic(p) == ", round(p_val_s3c, 2)), 
+           parse = TRUE, hjust = 0, size = 4)
 richnessWetlandAreaPlot_1km2
 
-richnessWetlandAreaPlot_5km2 <- ggplot(data = data %>%
-                                         filter(!is.na(wetlandBirdRichness)),
-                                       aes( x = wetlandArea_5km/1000000, y =  wetlandBirdRichness)) + 
+wetlandArea_5km_lm <- lm(wetlandBirdRichness~wetlandArea_5km,
+                         data = df_plot_s3)
+
+r2_val_s3d <- summary(wetlandArea_5km_lm)$r.squared
+# r2 < 0.01
+r2_val_s3d <- 0.01
+n_val_s3d <- nrow(df_plot_s3)
+p_val_s3d <- pf(summary(wetlandArea_5km_lm)$fstatistic[1],
+                summary(wetlandArea_5km_lm)$fstatistic[2],
+                summary(wetlandArea_5km_lm)$fstatistic[3],
+                lower.tail = FALSE)
+
+richnessWetlandAreaPlot_5km2 <- ggplot(data = df_plot_s3,
+                                       aes( x = wetlandArea_5km, y =  wetlandBirdRichness)) + 
   geom_point() + 
-  #geom_smooth(method = "lm", col = "black", formula = 'y~x')+
   theme_classic(base_size = 16) + 
   scale_y_continuous(breaks = c(0, 5, 10, 15, 20, 25, 30), limits = c(0, 30)) +
-  labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") ", bold("within 5km"))), tag = "d")+ 
-  stat_poly_eq(use_label(c("R2", "P", "n")), size = rel(4)) 
+  labs(y = "Wetland bird richness", x = expression(paste("Wetland area (km"^2,") ", "within 5km")), tag = "d")+ 
+  # stat_poly_eq(use_label(c("R2", "P", "n")), size = rel(4)) +
+  annotate("text", x = min(df_plot_s3$wetlandArea_5km), y = 30, 
+           label = paste0("italic(R^2) < ", round(r2_val_s3d, 2), 
+                          "*','~italic(n) == ", n_val_s3d, 
+                          "*','~italic(p) == ", round(p_val_s3d, 2)), 
+           parse = TRUE, hjust = 0, size = 4)
 richnessWetlandAreaPlot_5km2
 
 figS3_richnessWetlandArea <- grid.arrange(richnessWetlandAreaPlot_250m2, richnessWetlandAreaPlot_500m2, 
@@ -926,20 +749,23 @@ ggsave(figS3_richnessWetlandArea,
 # 8. Table S1: Summary of wetland characteristics -------------------------------------------------------
 
 summaryVariables <- data %>% 
-  select(depth, full_wetland_area_m2, total_em_area_m2, aerial_nep, total_density, aerial_gpp, aerial_r, 
+  select(depth_filled, full_wetland_area_m2, total_em_area_m2, total_density, aerial_gpp, aerial_r, aerial_nep,  
          flux_co2, flux_ch4, flux_n2o, gwp_sum_g, wetlandBirdRichness, wetlandArea_500m)
 
 summary_table <- data.frame(
   Variable = names(summaryVariables),
-  Mean = sapply(summaryVariables, function(x) mean(x, na.rm = TRUE)),
-  Median = sapply(summaryVariables, function(x) median(x, na.rm = TRUE)),
-  SD = sapply(summaryVariables, function(x) sd(x, na.rm = TRUE)),
-  Min = sapply(summaryVariables, function(x) min(x, na.rm = TRUE)),
-  Max = sapply(summaryVariables, function(x) max(x, na.rm = TRUE)),
+  Mean = sapply(summaryVariables, function(x) round(mean(x, na.rm = TRUE), 2)),
+  Median = sapply(summaryVariables, function(x) round(median(x, na.rm = TRUE), 2)),
+  SD = sapply(summaryVariables, function(x) round(sd(x, na.rm = TRUE), 2)),
+  Min = sapply(summaryVariables, function(x) round(min(x, na.rm = TRUE), 2)),
+  Max = sapply(summaryVariables, function(x) round(max(x, na.rm = TRUE), 2)),
   N = sapply(summaryVariables, function(x) sum(!is.na(x)))
 )
 
 print(summary_table)
 
+# Write table
+write.csv(summary_table,
+          paste0("Outputs/tableS1_dataSummary_", Sys.Date(), ".csv"))
 
 ## THE END :)
