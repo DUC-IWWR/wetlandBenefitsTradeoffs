@@ -828,6 +828,119 @@ print(summary_table)
 
 # Write table
 write.csv(summary_table,
-          paste0("Outputs/tableS1_dataSummary_", Sys.Date(), ".csv"))
+          paste0("Outputs/tableS1_dataSummary_", Sys.Date(), ".csv")) 
+
+
+# 10. Figure S1 Map of sampling locations --------------------------------------
+
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+library(tmap)
+
+canada <- ne_states(country = 'canada', returnclass = "sf") %>%
+  st_transform(crs=3347) 
+
+can_us <- ne_states(country = c('canada', 'united states of america'), 
+                       returnclass = "sf") %>% 
+  st_transform(crs=3347) %>% 
+  filter(!name == "Hawaii")
+
+#select just one province 
+alberta <- canada[canada$gn_name == "Alberta",]%>%
+  st_transform(crs=3347)
+
+manitoba <- canada[canada$gn_name == "Manitoba",] %>%
+  st_transform(crs=3347)
+
+saskatchewan <- canada[canada$gn_name == "Saskatchewan",]%>%
+  st_transform(crs=3347)
+
+#can bind multiple provinces together 
+prairies <- rbind(alberta, manitoba, saskatchewan)  
+
+ppr <- read_sf("Data/PPR_US_CAN.shp") %>% 
+  st_transform(crs = st_crs(canada)) %>%
+  st_intersection(canada)
+
+sites <- data %>% 
+  group_by(province, region) %>% 
+  summarize(lon = mean(longtitude_x), lat = mean(latitude_y), n = n()) %>% 
+  st_as_sf(., 
+           coords = c("lon", "lat"), 
+           crs = 4326) 
+
+n <- sites$n
+
+plot(sites$geometry)
+
+
+# Main map
+figS1 <-   
+  tm_shape(prairies) + 
+    tm_borders(col = "black", lwd = 1)+
+  tm_shape(can_us) + 
+    tm_borders(col = "gray", lwd = 1)+
+  tm_shape(ppr)+
+    tm_fill(col="#FEFAA1", alpha = 0.95, legend.show = F)+
+    tm_borders(col= "#E5B111")+
+  tm_shape(sites)+
+    tm_symbols(shapes=21, size= 0.5, col="#333754", border.col="black") +
+    tm_text(text = "n", xmod = -0.3, ymod = 0.7) +
+  tm_shape(prairies) + 
+    tm_borders(col = "black", lwd = 1)+
+  #add compass
+  tm_compass(position=c(0, 0.12), 
+             size = 3)+ 
+  #add scale bar 
+  tm_scale_bar(position=c(0, 0.05), 
+               text.size = 3, 
+               breaks = c(0, 100, 200))+ 
+  #add legend
+  tm_add_legend(type = "fill", labels = "Canadian Prairie Pothole Region", col = "#FEFAA1") +
+  tm_layout(frame = F, 
+            legend.position = c (0, 0), #c ("center", "bottom")
+            legend.text.size = 1, 
+            legend.width = 3,
+            inner.margins = c(0.1, 0.05, 0.25, 0.05)) #can change margins with: , inner.margins = c(0.02, 0.02, 0.02, 0.3)
+figS1 
+
+# Inset map
+canada_map <- tm_shape(can_us) +
+  #tm_borders(col="black", lwd = 1) +
+  tm_fill(col="gray") +
+  tm_shape(prairies) +
+  tm_borders(col= "dark gray", lwd = 1) +
+  tm_fill(col="white") +
+  tm_layout(frame = F, 
+            inner.margins = c(0.02, 0.02, 0.02, 0.02))
+canada_map
+
+# Combine with inset using viewport
+tmap_save(figS1, filename = "Outputs/main_map.png", width = 8, height = 10, dpi = 300, units = "in")
+tmap_save(canada_map, filename = "Outputs/inset_map.png", width = 4, height = 4, dpi = 300, units = "in")
+
+# Display with inset
+library(grid)
+main <- rasterGrob(png::readPNG("Outputs/main_map.png"), interpolate = TRUE)
+inset <- rasterGrob(png::readPNG("Outputs/inset_map.png"), interpolate = TRUE)
+
+grid.newpage()
+grid.draw(main)
+
+# Add inset
+vp <- viewport(x = 0.65, y = 0.92, width = 0.3, height = 0.28, just = c("left", "top"))
+pushViewport(vp)
+grid.draw(inset)
+
+# Draw a border around the inset
+grid.rect(gp = gpar(col = "black", lwd = 2, fill = NA))
+popViewport()
+
+
+# Save the final map with inset
+png("Outputs/final_map_with_inset.png", width = 8, height = 10, units = "in", res = 300)
+
+
 
 ## THE END :)
