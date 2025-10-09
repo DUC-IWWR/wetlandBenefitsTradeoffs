@@ -7,7 +7,7 @@
 ## Author: Ash Melo (Pidwerbesky), James Paterson
 ##
 ## Date Created: 2024-09-16
-## Date Edited: 2025-05-26
+## Date Edited: 2025-10-09
 ## 
 ## Email: a_melo@ducks.ca, j_paterson@ducks.ca
 ##
@@ -22,12 +22,42 @@ library(units)
 library(ggpmisc)
 library(ggtext)
 
-# 1. Load Data -----------------------------------------------------------------
+# 1. Load Data & Summarize -----------------------------------------------------------------
 
-data <- read.csv("wetland_tradeoff_df_2025-08-15.csv")
+data <- read.csv("wetland_tradeoff_df_2025-10-09.csv")
 
 # Data summary
 summary(data)
+
+# How many sites with bird biodiversity data?
+data %>%
+  filter(!is.na(wetlandBirdRichness)) %>%
+  pull(wetlandBirdRichness) %>%
+  length(.)
+# 57 sites
+
+# How many sites with emergent vegetetation
+data %>%
+  filter(!is.na(total_density)) %>%
+  pull(total_density) %>%
+  length(.)
+# 20 sites
+
+# How many sites with NEPaq
+data %>%
+  filter(!is.na(aerial_nep)) %>%
+  pull(aerial_nep) %>%
+  length(.)
+# 22 sites
+
+# How many sites with total GHG fluxes (includes CO2, CH4, N2O)?
+data %>%
+  filter(!is.na(pl_gwp_sum_g)) %>%
+  pull(pl_gwp_sum_g) %>%
+  length(.)
+# 65 sites
+
+# Full summary of each variable created for Table S1 below
 
 # 2. Correlation Analyses -------------------------------------------------------------
 
@@ -781,7 +811,7 @@ ggsave(FigS4, file = paste0("Outputs/figureS4_", Sys.Date(), ".png"),
 # 9. Table S1: Summary of wetland characteristics -------------------------------------------------------
 
 summaryVariables <- data %>% 
-  select(depth_filled, full_wetland_area_m2, total_em_area_m2, total_density, aerial_gpp, aerial_r, aerial_nep,  
+  select(depth_filled, Area.Ha, total_em_area_m2, total_density, aerial_gpp, aerial_r, aerial_nep,  
          flux_co2, flux_ch4, flux_n2o, gwp_sum_g, wetlandBirdRichness, wetlandArea_500m)
 
 summary_table <- data.frame(

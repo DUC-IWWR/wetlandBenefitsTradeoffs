@@ -4,10 +4,10 @@
 ##
 ## Purpose of script: Summarize wetland bird richness and measure surrounding wetland area
 ##
-## Author: James Paterson, Ash Pidwerbesky
+## Author: James Paterson, Ash Melo (Pidwerbesky)
 ##
 ## Date Created: 2025-05-02
-## Date modifed: 2025-05-02
+## Date modifed: 2025-10-09
 ## 
 ## Email: j_paterson@ducks.ca
 ##
@@ -81,7 +81,6 @@ siteWetlandBirdRichness <- wetlandBirdDetections %>%
 
 # Load SW's data and link
 caafData <- read_xlsx("Data/wetland_tradeoff_df_2025-07-28.xlsx", na = "NA") # sites from SW
-
 
 # Left join to confirmed richness data
 caafSitesData <- caafData %>%
@@ -192,28 +191,44 @@ caafWetlands <- caafWetlands_250m %>%
   drop_units() 
 
 
-##### 3. Clean old variables and save file for analyses --------------------------------------------------
+##### 3. Correct wetland area using updated imagery and methods ---------
 
-caafSitesData <- caafSitesData %>%
-  # Remove old area calculations and richness estimates
-  dplyr::select(-wetlandArea_250m, -wetlandArea_500m, -wetlandArea_1km, -wetlandArea_5km) %>%
-  # Rename wetland bird richness
-  left_join(.,
-            caafWetlands, 
+# Updated area data
+updatedWetlandArea <- read.csv("Data/matt_wetland_area_df.csv") %>%
+  dplyr::select(site_id, Area.Ha)
+
+# Load saved data
+data <- read.csv("Data/wetland_tradeoff_df_2025-08-15.csv")
+
+# Left join original data to new area
+dataNew <- data %>%
+  left_join(., 
+            updatedWetlandArea,
             by = "site_id")
 
-# Save .csv for rest of analyses
-write.csv(caafSitesData, paste0("Data/wetland_tradeoff_df_", Sys.Date(), ".csv"))
-# Current version "Data/wetland_tradeoff_df_2025-05-02.csv"
+# Plot difference
+plot(dataNew$Area.Ha~dataNew$full_wetland_area_m2)
+abline(1,0)
 
-caafSitesData %>%
-  filter(!is.na(wetlandBirdRichness)) %>%
-  pull(wetlandBirdRichness) %>%
-  length(.)
-# 57 sites
+##### 3. Clean old variables and save file for analyses --------------------------------------------------
 
-# Summarize wetland bird richness
-caafSitesData %>%
-  filter(!is.na(wetlandBirdRichness)) %>%
-  pull(wetlandBirdRichness) %>%
-  summary(.)
+# Remove old area
+caafSitesData <- dataNew %>%
+  dplyr::select(site_id:depth, Area.Ha, total_em_area_m2:wetlandArea_5km)
+
+# Save cleaned data for analyses
+write.csv(caafSitesData, 
+          paste0("wetland_tradeoff_df_", Sys.Date(), ".csv"))
+
+# caafSitesData <- caafSitesData %>%
+#   # Remove old area calculations and richness estimates
+#   dplyr::select(-wetlandArea_250m, -wetlandArea_500m, -wetlandArea_1km, -wetlandArea_5km) %>%
+#   # Rename wetland bird richness
+#   left_join(.,
+#             caafWetlands, 
+#             by = "site_id")
+# 
+# # Save .csv for rest of analyses
+# write.csv(caafSitesData, paste0("Data/wetland_tradeoff_df_", Sys.Date(), ".csv"))
+# Current version "Data/wetland_tradeoff_df_2025-08-15.csv"
+
