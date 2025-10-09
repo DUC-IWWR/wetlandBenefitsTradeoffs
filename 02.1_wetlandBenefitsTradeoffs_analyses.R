@@ -887,13 +887,13 @@ canada_map <- tm_shape(can_us) +
 canada_map
 
 # Combine with inset using viewport
-tmap_save(figS1, filename = "main_map.png", width = 8, height = 10, dpi = 300, units = "in")
-tmap_save(canada_map, filename = "inset_map.png", width = 4, height = 4, dpi = 300, units = "in")
+tmap_save(figS1, filename = "Outputs/main_map.png", width = 8, height = 10, dpi = 300, units = "in")
+tmap_save(canada_map, filename = "Outputs/inset_map.png", width = 4, height = 4, dpi = 300, units = "in")
 
 # Display with inset
 library(grid)
-main <- rasterGrob(png::readPNG("main_map.png"), interpolate = TRUE)
-inset <- rasterGrob(png::readPNG("inset_map.png"), interpolate = TRUE)
+main <- rasterGrob(png::readPNG("Outputs/main_map.png"), interpolate = TRUE)
+inset <- rasterGrob(png::readPNG("Outputs/inset_map.png"), interpolate = TRUE)
 
 grid.newpage()
 grid.draw(main)
@@ -909,7 +909,7 @@ popViewport()
 
 
 # Save the final map with inset
-png("final_map_with_inset.png", width = 8, height = 10, units = "in", res = 300)
+png("Outputs/final_map_with_inset.png", width = 8, height = 10, units = "in", res = 300)
 
 
 
