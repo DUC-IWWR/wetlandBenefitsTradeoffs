@@ -55,7 +55,7 @@ accum_list <- map(
       select(-SITE_ID, -week) %>%
       as.data.frame()
     
-    # BiodiversityR accumulation (bootstrapped)
+    # BiodiversityR accumulation
     acc <- accumresult(comm_mat, method = "exact", conditioned = F) 
 
     
@@ -89,7 +89,7 @@ p <- ggplot(accum_all, aes(x = samples, y = richness, ymin = lower, ymax = upper
 
 p 
 
-## add to dataframe ------------------------------------------------------------ 
+## add to data ------------------------------------------------------------ 
 
 wetland_tradeoff_df_2025 <- read_csv("wetland_tradeoff_df_2025-10-09.csv") %>% 
   select(-`...1`)
@@ -111,6 +111,7 @@ write.csv(wetland_tradeoff_df_2026, "wetland_tradeoff_df_2026-03-31.csv")
 
 
 # graveyard. 
+
 # Use vegan::specaccum() and bootstrapping to estimate the number of species at a site with uncertainty". 
 # Most examples use "sites" as samples, but we'd mostly be using "time" as samples (e.g., a day or a week) 
 # that accumulate more observed species within a site.
