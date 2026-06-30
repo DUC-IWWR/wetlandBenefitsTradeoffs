@@ -59,7 +59,7 @@ accum_list <- map(
     acc <- accumresult(comm_mat, method = "exact", conditioned = F) 
 
     
-    # Extract internal data frame (Kindt method)
+    # Extract internal data frame
     df <- data.frame(
       site = site,
       samples = acc$sites,
@@ -97,7 +97,9 @@ wetland_tradeoff_df_2025 <- read_csv("wetland_tradeoff_df_2025-10-09.csv") %>%
 richness_SD <- accum_all %>% 
   group_by(site) %>% 
   filter(samples == max(samples)) %>% 
-  select(site, richness, sd)  
+  select(site, richness, sd)   
+
+hist(richness_SD$sd)
 
 
 wetland_tradeoff_df_2026 <- wetland_tradeoff_df_2025 %>% 

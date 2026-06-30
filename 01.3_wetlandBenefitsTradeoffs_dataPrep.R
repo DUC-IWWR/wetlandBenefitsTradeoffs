@@ -216,9 +216,40 @@ abline(1,0)
 caafSitesData <- dataNew %>%
   dplyr::select(site_id:depth, Area.Ha, total_em_area_m2:wetlandArea_5km)
 
+# # Save cleaned data for analyses
+# write.csv(caafSitesData, 
+#           paste0("wetland_tradeoff_df_", Sys.Date(), ".csv"))
+
+
+##### 4. Add confidence intervals for variables and save for analyses ----------
+
+df <- read.csv("wetland_tradeoff_df_2026-03-31.csv") %>% 
+  dplyr::select(-X)
+
+GHG_CI <- read.csv("Data/GHGs with 95CIs_2026Apr02.csv")
+
+em_veg_error <- readxl::read_xlsx("Data/em_veg_error_data.xlsx")
+
+df_combined <- df %>% 
+  select(-total_density) %>% 
+  left_join(GHG_CI) %>% 
+  left_join(em_veg_error, by = "site_id") %>% 
+  select(-wet_bird_richness, -Site_ID, -richnessConfirmed)
+
+
+View(df_combined %>% 
+       select(site_id, pl_gwp_sum_g, plgwp_sum_g))
+
+View(df %>% 
+       left_join(em_veg_error, by = "site_id") %>% 
+       select(site_id, total_density.x, total_density.y))
+
+
 # Save cleaned data for analyses
-write.csv(caafSitesData, 
+write.csv(df_combined,
           paste0("wetland_tradeoff_df_", Sys.Date(), ".csv"))
+# last saved 2026-06-30
+
 
 # caafSitesData <- caafSitesData %>%
 #   # Remove old area calculations and richness estimates
