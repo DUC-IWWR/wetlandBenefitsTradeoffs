@@ -171,7 +171,7 @@ richnessVegDens <- ggplot(df_plot_1a,
                           aes(x = total_density, y = wetlandBirdRichness)) + 
   geom_errorbar(aes(ymin = wetlandBirdRichness - richness_sd, 
                     ymax = wetlandBirdRichness + richness_sd),
-                width = 0.01, color = "grey50") +
+                width = 0, color = "grey50") +
   geom_point() + 
   theme_classic(base_size = 14) + 
   labs(y = "Wetland bird richness" ,  
@@ -203,7 +203,7 @@ richnessNEP <- ggplot(data = df_plot_1b,
                       aes( x = aerial_nep, y = wetlandBirdRichness)) + 
   geom_errorbar(aes(ymin = wetlandBirdRichness - richness_sd, 
                     ymax = wetlandBirdRichness + richness_sd),
-                width = 0.3, color = "grey50") +
+                width = 0, color = "grey50") +
   geom_point() + 
   #geom_smooth(method = "lm", se = F, col = "black")+ 
   theme_classic(base_size = 14) + 
@@ -244,7 +244,7 @@ vegDensGWP <- ggplot(data = df_plot_2a,
                      aes( x = total_density, y = plgwp_sum_g)) + 
   geom_errorbar(aes(ymin = plgwp_low, 
                     ymax = plgwp_up),
-                width = 0.01, color = "grey50") +
+                width = 0, color = "grey50") +
   geom_point() + 
   scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1, 5)) +
   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x')+ 
@@ -276,7 +276,7 @@ vegDensCO2 <- ggplot(data = data%>% filter(!is.na(total_density)),
                      aes( x = total_density, y = pl_flux_co2)) + 
   geom_errorbar(aes(ymin = plfluxco2_low, 
                     ymax = plfluxco2_up),
-                width = 0.01, color = "grey50") +
+                width = 0, color = "grey50") +
   geom_point() + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5), limits = c(-2, 5)) +
   theme_classic(base_size = 14) + 
@@ -338,7 +338,7 @@ vegDensN2O <- ggplot(data = data %>%
                      aes( x = total_density, y = pl_flux_n2o)) + 
   geom_errorbar(aes(ymin = plfluxn2o_low, 
                     ymax = plfluxn2o_up),
-                width = 0.01, color = "grey50") +
+                width = 0, color = "grey50") +
   geom_point() + 
   scale_y_continuous(breaks = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6), limits = c(-5, 6.3)) +
   theme_classic(base_size = 14) + 
@@ -366,7 +366,7 @@ nepGWP <- ggplot(data = df_plot_2e,
                  aes( x = aerial_nep, y = plgwp_sum_g)) + 
   geom_errorbar(aes(ymin = plgwp_low, 
                     ymax = plgwp_up),
-                width = 0.5, color = "grey50") +
+                width = 0, color = "grey50") +
   geom_point() + 
   scale_y_continuous(breaks = c(-2,-1, 0, 1, 2, 3, 4, 5), limits = c(-2, 5)) +
   theme_classic(base_size = 14) + 
@@ -397,7 +397,7 @@ nepCO2 <- ggplot(data = df_plot_2f,
                  aes( x = aerial_nep, y = pl_flux_co2)) + 
   geom_errorbar(aes(ymin = plfluxco2_low, 
                     ymax = plfluxco2_up),
-                width = 0.5, color = "grey50") +
+                width = 0, color = "grey50") +
   geom_point() + 
   scale_y_continuous(breaks = c(-1, 0, 1, 2, 3, 4, 5), limits = c(-1.4, 5)) +
   theme_classic(base_size = 14) + 
@@ -453,7 +453,7 @@ nepN2O <- ggplot(data = df_plot_2h,
                  aes( x = aerial_nep, y = pl_flux_n2o)) + 
   geom_errorbar(aes(ymin = plfluxn2o_low, 
                     ymax = plfluxn2o_up),
-                width = 0.5, color = "grey50") +
+                width = 0, color = "grey50") +
   geom_point() +
   scale_y_continuous(breaks = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6), limits = c(-5, 6.3)) +
   theme_classic(base_size = 14) + 
@@ -473,6 +473,8 @@ ggsave(fig2, file = paste0("Outputs/figure2_", Sys.Date(), ".png"), width = 9, h
 
 # 5. Figure 3 -----------------------------------------------------
 
+pos <- position_jitter(width = 0.2, seed = 42)
+
 df_plot_3a <- data %>%
   filter(!is.na(plgwp_sum_g), !is.na(wetlandBirdRichness))
 
@@ -488,8 +490,8 @@ richnessGWP <- ggplot(data = df_plot_3a,
                      aes(x = wetlandBirdRichness, y = plgwp_sum_g)) + 
   geom_errorbar(aes(ymin = plgwp_low, 
                     ymax = plgwp_up),
-                width = 0.5, color = "grey50") +
-  geom_point() + 
+                width = 0, color = "grey50", position = pos) +
+  geom_point(position = pos) + 
   geom_smooth(method = "lm", se = F, col = "black", formula = 'y~x') + 
   theme_classic(base_size = 14) + 
   scale_x_continuous(breaks = c(5, 10, 15, 20, 25, 30), limits = c(5, 30)) +
@@ -518,7 +520,7 @@ richnessCO2 <- ggplot(data = df_plot_3b,
                       aes( x = wetlandBirdRichness, y = pl_flux_co2)) + 
   geom_errorbar(aes(ymin = plfluxco2_low, 
                     ymax = plfluxco2_up),
-                width = 0.5, color = "grey50") +
+                width = 0, color = "grey80") +
   geom_point() + 
   geom_smooth(method = "lm", se = F, col = "black")+ 
   theme_classic(base_size = 14) + 
